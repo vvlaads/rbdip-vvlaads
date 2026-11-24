@@ -59,7 +59,11 @@ public class OrderService {
             orderItemRepository.save(new OrderItem(order, product, quantity));
         }
 
-        orderNotificationService.sendConfirmationEmail(request.customerFullName(), order.getId(),
+        String customerName = customer.getFirstName() + " " + customer.getLastName();
+
+        orderNotificationService.sendConfirmationEmail(
+                customerName,
+                order.getId(),
                 pricingResult.total());
 
         return order;
