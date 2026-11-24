@@ -10,6 +10,18 @@ import java.util.List;
  * характеризационных тестов (ЛР2) и mutation-testing гейта PIT (ЛР5).
  */
 public class PricingCalculator {
+    private static final Integer ITEM_QUANTITY_FOR_DISCOUNT = 10;
+    private static final BigDecimal DISCOUNT_FOR_LARGE_ITEM_QUANTITY = BigDecimal.valueOf(0.95);
+
+    private static final BigDecimal VIP_DISCOUNT = BigDecimal.valueOf(0.9);
+    private static final BigDecimal WHOLESALE_DISCOUNT = BigDecimal.valueOf(0.85);
+    private static final BigDecimal SAVE20_DISCOUNT = BigDecimal.valueOf(0.8);
+
+    private static final BigDecimal DISCOUNT_FOR_EXPENSIVE_ORDER = BigDecimal.valueOf(0.98);
+    private static final BigDecimal EXPENSIVE_ORDER_THRESHOLD = BigDecimal.valueOf(1000);
+    private static final BigDecimal SAVE10_DISCOUNT_AMOUNT = BigDecimal.TEN;
+
+    private static final int MONEY_SCALE = 2;
 
     public record LineItem(BigDecimal price, int quantity) {
     }
@@ -18,33 +30,56 @@ public class PricingCalculator {
         BigDecimal total = BigDecimal.ZERO;
 
         for (LineItem item : items) {
-            BigDecimal linePrice = item.price().multiply(BigDecimal.valueOf(item.quantity()));
-            if (item.quantity() > 10) {
-                linePrice = linePrice.multiply(BigDecimal.valueOf(0.95));
-            }
-            total = total.add(linePrice);
+            total = total.add(calculateLinePrice(item));
         }
 
+        total = applyCustomerDiscount(total, customerType);
+        total = applyCouponDiscount(total, couponCode);
+        total = ensureNonNegative(total);
+        total = applyExpensiveOrderDiscount(total);
+
+        return total.setScale(MONEY_SCALE, RoundingMode.HALF_UP);
+    }
+
+    private BigDecimal calculateLinePrice(LineItem item) {
+        BigDecimal price = item.price().multiply(BigDecimal.valueOf(item.quantity()));
+
+        if (item.quantity() > ITEM_QUANTITY_FOR_DISCOUNT) {
+            price = price.multiply(DISCOUNT_FOR_LARGE_ITEM_QUANTITY);
+        }
+
+        return price;
+    }
+
+    private BigDecimal applyCustomerDiscount(BigDecimal total, String customerType) {
         if ("vip".equals(customerType)) {
-            total = total.multiply(BigDecimal.valueOf(0.9));
+            return total.multiply(VIP_DISCOUNT);
         } else if ("wholesale".equals(customerType)) {
-            total = total.multiply(BigDecimal.valueOf(0.85));
+            return total.multiply(WHOLESALE_DISCOUNT);
         }
 
+        return total;
+    }
+
+    private BigDecimal applyCouponDiscount(BigDecimal total, String couponCode) {
         if ("SAVE10".equals(couponCode)) {
-            total = total.subtract(BigDecimal.TEN);
+            return total.subtract(SAVE10_DISCOUNT_AMOUNT);
         } else if ("SAVE20PERCENT".equals(couponCode)) {
-            total = total.multiply(BigDecimal.valueOf(0.8));
+            return total.multiply(SAVE20_DISCOUNT);
         }
 
-        if (total.compareTo(BigDecimal.ZERO) < 0) {
-            total = BigDecimal.ZERO;
+        return total;
+    }
+
+    private BigDecimal applyExpensiveOrderDiscount(BigDecimal total) {
+        if (total.compareTo(EXPENSIVE_ORDER_THRESHOLD) > 0) {
+            return total.multiply(DISCOUNT_FOR_EXPENSIVE_ORDER);
         }
 
-        if (total.compareTo(BigDecimal.valueOf(1000)) > 0) {
-            total = total.multiply(BigDecimal.valueOf(0.98));
-        }
+        return total;
+    }
 
-        return total.setScale(2, RoundingMode.HALF_UP);
+    private BigDecimal ensureNonNegative(BigDecimal total) {
+        return total.max(BigDecimal.ZERO);
     }
 }
