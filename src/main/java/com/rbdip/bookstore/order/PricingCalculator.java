@@ -23,6 +23,11 @@ public class PricingCalculator {
 
     private static final int MONEY_SCALE = 2;
 
+    private static final String CUSTOMER_TYPE_VIP = "vip";
+    private static final String CUSTOMER_TYPE_WHOLESALE = "wholesale";
+    private static final String COUPON_SAVE10 = "SAVE10";
+    private static final String COUPON_SAVE20_PERCENT = "SAVE20PERCENT";
+
     public record LineItem(BigDecimal price, int quantity) {
     }
 
@@ -52,9 +57,9 @@ public class PricingCalculator {
     }
 
     private BigDecimal applyCustomerDiscount(BigDecimal total, String customerType) {
-        if ("vip".equals(customerType)) {
+        if (CUSTOMER_TYPE_VIP.equals(customerType)) {
             return total.multiply(VIP_DISCOUNT);
-        } else if ("wholesale".equals(customerType)) {
+        } else if (CUSTOMER_TYPE_WHOLESALE.equals(customerType)) {
             return total.multiply(WHOLESALE_DISCOUNT);
         }
 
@@ -62,9 +67,9 @@ public class PricingCalculator {
     }
 
     private BigDecimal applyCouponDiscount(BigDecimal total, String couponCode) {
-        if ("SAVE10".equals(couponCode)) {
+        if (COUPON_SAVE10.equals(couponCode)) {
             return total.subtract(SAVE10_DISCOUNT_AMOUNT);
-        } else if ("SAVE20PERCENT".equals(couponCode)) {
+        } else if (COUPON_SAVE20_PERCENT.equals(couponCode)) {
             return total.multiply(SAVE20_DISCOUNT);
         }
 
