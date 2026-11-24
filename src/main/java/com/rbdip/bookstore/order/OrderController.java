@@ -32,21 +32,37 @@ public class OrderController {
 
     @GetMapping("/orders")
     public List<Map<String, Object>> listOrders() {
-        List<Order> orders = orderRepository.findAll();
+        List<Order> orders = orderRepository.findAllWithCustomer();
+
+        if (orders.isEmpty()) {
+            return List.of();
+        }
+
+        List<Long> orderIds = orders.stream()
+                .map(Order::getId)
+                .toList();
+
+        List<OrderItemSummary> items = orderItemRepository.findAllWithProductByOrderIds(orderIds);
+
+        Map<Long, List<OrderItemSummary>> itemsByOrder = items.stream()
+                .collect(java.util.stream.Collectors.groupingBy(OrderItemSummary::orderId));
+
         return orders.stream()
                 .map(order -> {
-                    // N+1: отдельный запрос на позиции для каждого заказа вместо
-                    // одного JOIN FETCH / batch-запроса. Цель для ЛР4.
-                    List<OrderItem> items = orderItemRepository.findByOrderId(order.getId());
+                    List<Map<String, Object>> orderItems = itemsByOrder
+                            .getOrDefault(order.getId(), List.of())
+                            .stream()
+                            .map(item -> Map.<String, Object>of(
+                                    "productName", item.productName(),
+                                    "quantity", item.quantity()))
+                            .toList();
+
                     return Map.<String, Object>of(
                             "id", order.getId(),
                             "customerFullName",
                             order.getCustomer().getFirstName() + " " + order.getCustomer().getLastName(),
                             "status", order.getStatus(),
-                            "items", items.stream()
-                                    .map(i -> Map.of("productName", i.getProduct().getName(), "quantity",
-                                            i.getQuantity()))
-                                    .toList());
+                            "items", orderItems);
                 })
                 .toList();
     }
