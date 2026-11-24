@@ -18,6 +18,12 @@ public class Customer {
     @Column(name = "full_name", nullable = false)
     private String fullName;
 
+    @Column(name = "first_name")
+    private String firstName;
+
+    @Column(name = "last_name")
+    private String lastName;
+
     @Column(name = "address")
     private String address;
 
@@ -30,6 +36,19 @@ public class Customer {
 
     public Customer(String fullName, String address, String phone) {
         this.fullName = fullName;
+
+        String[] nameParts = fullName.trim().split("\\s+", 2);
+        this.firstName = nameParts[0];
+        this.lastName = nameParts.length > 1 ? nameParts[1] : "";
+
+        this.address = address;
+        this.phone = phone;
+    }
+
+    public Customer(String firstName, String lastName, String address, String phone) {
+        this.firstName = firstName;
+        this.lastName = lastName;
+        this.fullName = firstName + " " + lastName;
         this.address = address;
         this.phone = phone;
     }
@@ -40,6 +59,14 @@ public class Customer {
 
     public String getFullName() {
         return fullName;
+    }
+
+    public String getFirstName() {
+        return firstName;
+    }
+
+    public String getLastName() {
+        return lastName;
     }
 
     public String getAddress() {
