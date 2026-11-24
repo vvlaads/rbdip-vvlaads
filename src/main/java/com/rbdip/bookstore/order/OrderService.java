@@ -12,6 +12,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class OrderService {
     private final OrderRepository orderRepository;
     private final OrderItemRepository orderItemRepository;
+    private final CustomerRepository customerRepository;
     private final OrderValidator orderValidator;
     private final OrderPricingService orderPricingService;
     private final OrderNotificationService orderNotificationService;
@@ -19,11 +20,13 @@ public class OrderService {
     public OrderService(
             OrderRepository orderRepository,
             OrderItemRepository orderItemRepository,
+            CustomerRepository customerRepository,
             OrderValidator orderValidator,
             OrderPricingService orderPricingService,
             OrderNotificationService orderNotificationService) {
         this.orderRepository = orderRepository;
         this.orderItemRepository = orderItemRepository;
+        this.customerRepository = customerRepository;
         this.orderValidator = orderValidator;
         this.orderPricingService = orderPricingService;
         this.orderNotificationService = orderNotificationService;
@@ -35,14 +38,19 @@ public class OrderService {
 
         OrderPricingResult pricingResult = orderPricingService.calculatePriceForOrder(request);
 
-        Order order = new Order(
-                request.customerFullName(), request.customerAddress(), request.customerPhone(), "new");
+        Customer customer = customerRepository.save(new Customer(
+                request.customerFullName(),
+                request.customerAddress(),
+                request.customerPhone()));
+
+        Order order = new Order(customer, "new");
         order = orderRepository.save(order);
 
         for (int i = 0; i < pricingResult.products().size(); i++) {
             Product product = pricingResult.products().get(i);
             int quantity = pricingResult.lineItems().get(i).quantity();
-            orderItemRepository.save(new OrderItem(order.getId(), product.getName(), product.getPrice(), quantity));
+
+            orderItemRepository.save(new OrderItem(order, product, quantity));
         }
 
         orderNotificationService.sendConfirmationEmail(request.customerFullName(), order.getId(),
